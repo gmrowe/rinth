@@ -1,0 +1,5 @@
+*.org
+.cpcache/
+.dir-locals.el
+.nrepl-port
+*.pdf
