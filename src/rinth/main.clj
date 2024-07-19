@@ -38,18 +38,6 @@
 
 (def opposite {:north :south, :south :north, :west :east, :east :west})
 
-(defn link2
-  ([grid row col direction] (link2 grid row col direction true))
-  ([grid row col direction bidirectional?]
-   (let [new-grid (update-in grid
-                             [:cells (raw-index grid row col) :links]
-                             conj
-                             direction)]
-     (if bidirectional?
-       (let [[link-row link-col] (get direction (cell-at grid row col))]
-         (recur new-grid link-row link-col (opposite direction) false))
-       new-grid))))
-
 (defn link
   ([grid cell direction] (link grid cell direction true))
   ([grid cell direction bidirectional?]
@@ -80,8 +68,8 @@
 
 (defn neighbors
   [grid cell]
-  (keep (fn [dir] (apply cell-at grid (get cell dir)))
-        [:north :south :east :west]))
+  (filter (fn [dir] (apply in-bounds? grid (get cell dir)))
+    [:north :south :east :west]))
 
 (defn rand-cell
   [grid]
@@ -92,34 +80,63 @@
 (defn binary-tree
   [grid]
   (reduce (fn [g cell]
-            (let [neighbors (filter #(apply in-bounds? g (get cell %))
-                              [:north :east])]
-              (if (seq neighbors) (link g cell (rand-nth neighbors)) g)))
+            (let [path-options (filter #{:north :east} (neighbors g cell))]
+              (if (seq path-options) (link g cell (rand-nth path-options)) g)))
     grid
     (:cells grid)))
 
+(not (some #{:a} [:b :c]))
+
+(defn sidewinder
+  [grid]
+  (first (reduce
+           (fn [[g r] cell]
+             (let [run (conj r (:col cell))
+                   eastern-boundary? (not (some #{:east} (neighbors grid cell)))
+                   northern-boundary? (not (some #{:north}
+                                                 (neighbors grid cell)))
+                   end-run? (or eastern-boundary?
+                                (and (not northern-boundary?)
+                                     (rand-nth [true false])))]
+               (if end-run?
+                 [(if northern-boundary?
+                    g
+                    (link g (cell-at g (:row cell) (rand-nth run)) :north)) []]
+                 [(link g cell :east) run])))
+           [grid []]
+           (:cells grid))))
+
+(defn- render-cell
+  [cell]
+  [(str "   " (if (get (:links cell) :east) " " "|"))
+   (str (if (get (:links cell) :south) "   " "---") "+")])
+
+(defn- render-row
+  [row]
+  (reduce (fn [[top bottom] cell]
+            (let [[cell-top cell-bottom] (render-cell cell)]
+              [(str top cell-top) (str bottom cell-bottom)]))
+    ["|" "+"]
+    row))
+
 (defn string-render
   [grid]
-  (let [outer [(str "+" (apply str (repeat (cols grid) "---+")))]
-        inner (mapcat (fn [row]
-                        (reduce (fn [[top bottom] cell]
-                                  [(str top
-                                        "   "
-                                        (if (get (:links cell) :east) " " "|"))
-                                   (str
-                                     bottom
-                                     (if (get (:links cell) :south) "   " "---")
-                                     "+")])
-                          ["|" "+"]
-                          row))
-                (partition (cols grid) (:cells grid)))]
-    (str/join \newline (concat outer inner))))
+  (str/join \newline
+            (cons (str "+" (apply str (repeat (cols grid) "---+")))
+                  (mapcat render-row (partition (cols grid) (:cells grid))))))
 
+(def algorithm-lookup {:binary-tree binary-tree, :sidewinder sidewinder})
 
 (defn run
-  [_args]
-  (-> (grid 4 4 init-cells)
-      binary-tree
-      string-render))
+  [{:keys [rows cols algorithm]}]
+  (let [algo (algorithm-lookup algorithm)]
+    (if algo
+      (-> (grid rows cols init-cells)
+          algo
+          string-render)
+      (throw (ex-info "[ERROR] Unknown algorithm"
+                      {:algorithm (name algorithm)})))))
 
-(defn -main [& args] (println (run args)))
+(defn cli-entry [opts] (println (run opts)))
+
+(defn -main [args] (println (run args)))
