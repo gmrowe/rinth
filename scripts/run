@@ -1,3 +1,66 @@
 #!/usr/bin/env bash
 
-bb -cp src -m rinth.main
+usage() {
+    echo "Usage: $0 [-r <integer>] [-c <integer>] <algorithm> "
+    echo
+    echo "   -r <integer> (optional): specify number of rows."
+    echo "                            Default = 4 if not provided"
+    echo "   -c <integer> (optional): specify number of columns."
+    echo "                            Default = 4 if not provided"
+    echo
+    echo "Supported algorithms are:"
+    echo "   binary-tree: a simple binary tree maze generating funtion."
+}
+
+# Check for the --help argument
+if [ "$1" == "--help" ]; then
+    usage
+    exit 0
+fi
+
+cols=4
+rows=4
+
+# Parse command line options
+while getopts ":r:c:h" opt; do
+  case ${opt} in
+    c )
+	cols=$OPTARG
+	;;
+    r )
+	rows=$OPTARG
+	;;
+    h )
+	usage
+	exit 0
+	;;
+    \? )
+	echo "Invalid option: $OPTARG" 1>&2
+	exit 1
+	;;
+    : )
+	echo "Option -$OPTARG requires an argument." 1>&2
+	exit 1
+	;;
+  esac
+done
+shift $((OPTIND -1))
+
+# Check if mandatory argument is provided
+if [ -z "$1" ]; then
+    usage
+    exit 1
+fi
+
+algorithm_name=":$1"
+
+# Check if cols and rows are integers
+if ! [[ $cols =~ ^[0-9]+$ ]] || ! [[ $rows =~ ^[0-9]+$ ]]; then
+  echo "Cols and rows must be integers."
+  exit 1
+fi
+
+opts=":cols $cols :rows $rows :algorithm $algorithm_name"
+
+bb -x rinth.main/cli-entry $opts
+
