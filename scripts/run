@@ -9,7 +9,8 @@ usage() {
     echo "                            Default = 4 if not provided"
     echo
     echo "Supported algorithms are:"
-    echo "   binary-tree: a simple binary tree maze generating funtion."
+    echo "   binary-tree: a simple binary tree maze generating algorithm."
+    echo "   sidewinder:  a sidewinder maze generating algorithm"
 }
 
 # Check for the --help argument
