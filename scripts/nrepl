@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
 
+# This script does not use cider-nrepl middleware so some functionality will not
+# be available if we connect to nrepl with M-x cider-connect.
+# However, by starting the script without the cider-nrepl middleware, we can
+# spawn an external JFrame which doesn't seem to be possible with
+# the nrepl running cider-nrepl middleware
+
 clojure -M:dev:nrepl
 
