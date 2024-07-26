@@ -72,8 +72,6 @@
           grid
           (:cells grid)))
 
-(not (some #{:a} [:b :c]))
-
 (defn sidewinder
   [grid]
   (first
