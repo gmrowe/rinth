@@ -1,6 +1,7 @@
 (ns rinth.main
   (:require
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   [mikera.image.colours :as col]))
 
 (defn grid
   [rows cols cell-init]
@@ -116,6 +117,55 @@
           algo
           string-render)
       (throw (ex-info "[ERROR] Unknown algorithm" {:algorithm (name algorithm)})))))
+
+(defn- line-low
+  [x0 y0 x1 y1]
+  (let [dx (- x1 x0)
+        dy (- y1 y0)
+        yi 1
+        yi (if (< dy 0) -1 yi)
+        dy (if (< dy 0) (- dy) dy)
+        d0 (- (* 2 dy) dx)]
+    (->> [x0 y0 d0]
+         (iterate (fn [[x y d]] [(inc x) (if (< 0 d) (+ y yi) y)
+                                 (if (< 0 d) (+ (* 2 (- dy dx)) d) (+ (* 2 dy) d))]))
+         (take-while (fn [[x _ _]] (<= x x1)))
+         (map butlast))))
+
+(defn- line-high
+  [x0 y0 x1 y1]
+  (let [dx (- x1 x0)
+        dy (- y1 y0)
+        xi 1
+        xi (if (< dx 0) -1 xi)
+        dx (if (< dx 0) (- dx) dx)
+        d0 (- (* 2 dx) dy)]
+    (->> [x0 y0 d0]
+         (iterate (fn [[x y d]] [(if (< 0 d) (+ x xi) x) (inc y)
+                                 (if (< 0 d) (+ (* 2 (- dx dy)) d) (+ (* 2 dx) d))]))
+         (take-while (fn [[_ y _]] (<= y y1)))
+         (map butlast))))
+
+(defn line
+  [x0 y0 x1 y1]
+  (if (< (abs (- y1 y0)) (abs (- x1 x0)))
+    (if (< x0 x1) (line-low x0 y0 x1 y1) (line-low x1 y1 x0 y0))
+    (if (< y0 y1) (line-high x0 y0 x1 y1) (line-high x1 y1 x0 y0))))
+
+(defn update-image-pixel
+  [image x y color]
+  (assoc-in image [:pixels (+ (* (:width image) y) x)] color))
+
+(defn as-string
+  [image]
+  (let [{:keys [width pixels]} image]
+    (->> pixels
+         (map (fn [p] (if (<= p col/darkGray) \. \@)))
+         (partition width)
+         (map str/join)
+         (str/join \newline))))
+
+
 
 (defn cli-entry [opts] (println (run opts)))
 
