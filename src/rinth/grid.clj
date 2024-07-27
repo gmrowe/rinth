@@ -17,7 +17,7 @@
 
 (defn init-cells
   [rows cols]
-  (into [] (for [r (range rows) c (range cols)] (cell r c))))
+  (vec (for [r (range rows) c (range cols)] (cell r c))))
 
 (defn cols [grid] (:width grid))
 
