@@ -45,10 +45,24 @@
                       {:algorithm (name algorithm)})))))
 
 (comment
+  "Save a grid as a png file"
   (-> (grid/make-grid 20 20 grid/init-cells)
       sidewinder
       (display/image-from-grid 20 col/magenta col/cyan)
       (display/save-image "my-maze.png")))
+
+(comment
+  "Show a grid on-screen as a Jframe"
+  (-> (grid/make-grid 20 20 grid/init-cells)
+      sidewinder
+      (display/image-from-grid 20 col/black col/cyan)
+      display/show-image))
+
+(comment
+  "Show a grid on-screen as a Jframe, convienence method with `sensible defaults`"
+  (-> (grid/make-grid 20 20 grid/init-cells)
+      sidewinder
+      display/show))
 
 (defn cli-entry [opts] (println (run opts)))
 
