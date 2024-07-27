@@ -63,5 +63,5 @@ fi
 
 opts=":cols $cols :rows $rows :algorithm $algorithm_name"
 
-bb -x rinth.main/cli-entry $opts
+clojure -X rinth.main/cli-entry $opts
 

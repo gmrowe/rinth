@@ -42,7 +42,7 @@
     (if algo
       (-> (grid/make-grid rows cols grid/init-cells)
           algo
-          display/string-render)
+          display/show)
       (throw (ex-info "[ERROR] Unknown algorithm"
                       {:algorithm (name algorithm)})))))
 
