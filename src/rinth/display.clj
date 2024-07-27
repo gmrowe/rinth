@@ -69,8 +69,7 @@
 
 (defn update-image-pixel
   [image x y color]
-  (if (and (< x (:width image))
-           (< y (/ (count (:pixels image)) (:width image))))
+  (if (and (< x (:width image)) (< y (:height image)))
     (assoc-in image [:pixels (+ (* (:width image) y) x)] color)
     image))
 
@@ -80,16 +79,12 @@
             (let [x0 (* cell-size col)
                   y0 (* cell-size row)
                   x1 (+ x0 cell-size)
-                  y1 (+ y0 cell-size)
-                  western-boundary?
-                  (not (contains? (grid/neighbors-set grid cell) :west))
-
-                  northern-boundary?
-                  (not (contains? (grid/neighbors-set grid cell) :north))]
-              (concat (if western-boundary? (line x0 y0 x0 y1) [])
-                      (if northern-boundary? (line x0 y0 x1 y0) [])
-                      (if (grid/linked? cell :east) [] (line x1 y0 x1 y1))
-                      (if (grid/linked? cell :south) [] (line x0 y1 x1 y1)))))
+                  y1 (+ y0 cell-size)]
+              (concat
+               (if (grid/neighbor? grid cell :west) [] (line x0 y0 x0 y1))
+               (if (grid/neighbor? grid cell :north) [] (line x0 y0 x1 y0))
+               (if (grid/linked? cell :east) [] (line x1 y0 x1 y1))
+               (if (grid/linked? cell :south) [] (line x0 y1 x1 y1)))))
    (:cells grid)))
 
 (defn image-from-grid
@@ -108,6 +103,12 @@
     (img/set-pixels imz (int-array (:pixels image)))
     (img/show imz)
     imz))
+
+(defn save-image
+  [image path]
+  (let [imz (img/new-image (:width image) (:height image))]
+    (img/set-pixels imz (int-array (:pixels image)))
+    (img/save imz path)))
 
 (def default-cell-size 10)
 

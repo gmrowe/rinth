@@ -47,7 +47,8 @@
 (comment
   (-> (grid/make-grid 20 20 grid/init-cells)
       sidewinder
-      (display/show 40 col/blue col/yellow)))
+      (display/image-from-grid 20 col/magenta col/cyan)
+      (display/save-image "my-maze.png")))
 
 (defn cli-entry [opts] (println (run opts)))
 
