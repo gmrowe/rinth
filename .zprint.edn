@@ -29,4 +29,4 @@
   "with-instrument-disabled" :flow-body}
  :map {:comma? false :sort? false}
  :style [:community :how-to-ns :binding-nl]
- :width 100}
+ :width 80}
