@@ -2,118 +2,36 @@
   (:require
    [clojure.string :as str]
    [mikera.image.core :as img]
-   [mikera.image.colours :as col]))
-
-(defn grid
-  [rows cols cell-init]
-  {:width cols
-   :cells (cell-init rows cols)})
-
-(defn cell
-  [row col]
-  {:row row
-   :col col
-   :north [(dec row) col]
-   :south [(inc row) col]
-   :east [row (inc col)]
-   :west [row (dec col)]
-   :links #{}})
-
-(defn init-cells
-  [rows cols]
-  (into [] (for [r (range rows) c (range cols)] (cell r c))))
-
-(defn cols [grid] (:width grid))
-
-(defn rows [grid] (/ (count (:cells grid)) (cols grid)))
-
-(defn in-bounds?
-  [grid row col]
-  (and (<= 0 row) (< row (rows grid)) (<= 0 col) (< col (cols grid))))
-
-(defn- raw-index [grid row col] (+ (* row (:width grid)) col))
-
-(defn cell-at
-  [grid row col]
-  (when (in-bounds? grid row col)
-    (get-in grid [:cells (raw-index grid row col)])))
-
-(defn reinsert
-  [cell grid]
-  (assoc-in grid [:cells (raw-index grid (:row cell) (:col cell))] cell))
-
-(def opposite {:north :south :south :north :west :east :east :west})
-
-(defn link
-  ([grid cell direction] (link grid cell direction true))
-  ([grid cell direction bidirectional?]
-   (let [new-grid (reinsert (update cell :links conj direction) grid)]
-     (if bidirectional?
-       (link new-grid
-             (apply cell-at new-grid (get cell direction))
-             (opposite direction)
-             false)
-       new-grid))))
-
-(defn unlink
-  ([grid cell direction] (unlink grid cell direction true))
-  ([grid cell direction bidirectional?]
-   (let [new-grid (reinsert (update cell :links disj direction) grid)]
-     (if bidirectional?
-       (unlink new-grid
-               (apply cell-at new-grid (get cell direction))
-               (opposite direction)
-               false)
-       new-grid))))
-
-(defn linked? [cell direction] (some? (get (:links cell) direction)))
-
-(defn neighbors
-  [grid cell]
-  (filter (fn [dir] (apply in-bounds? grid (get cell dir)))
-          [:north :south :east :west]))
-
-(defn neighbors-set
-  [grid cell]
-  (apply hash-set
-         (filter (fn [dir] (apply in-bounds? grid (get cell dir)))
-                 [:north :south :east :west])))
-
-(defn neighbor?
-  [grid cell direction]
-  (contains? (neighbors-set grid cell) direction))
-
-(defn rand-cell
-  [grid]
-  (cell-at grid (rand-int (rows grid)) (rand-int (cols grid))))
-
-(defn size [grid] (count (:cells grid)))
+   [mikera.image.colours :as col]
+   [rinth.grid :as grid]))
 
 (defn binary-tree
   [grid]
-  (reduce (fn [g cell]
-            (let [path-options (filter #{:north :east} (neighbors g cell))]
-              (if (seq path-options) (link g cell (rand-nth path-options)) g)))
-          grid
-          (:cells grid)))
+  (reduce
+   (fn [g cell]
+     (let [path-options (filter #{:north :east} (grid/neighbors g cell))]
+       (if (seq path-options) (grid/link g cell (rand-nth path-options)) g)))
+   grid
+   (:cells grid)))
 
 (defn sidewinder
   [grid]
-  (first (reduce
-          (fn [[g r] cell]
-            (let [run (conj r (:col cell))
-                  eastern-boundary? (not (neighbor? g cell :east))
-                  northern-boundary? (not (neighbor? g cell :north))
-                  end-run? (or eastern-boundary?
-                               (and (not northern-boundary?)
-                                    (rand-nth [true false])))]
-              (if end-run?
-                [(if northern-boundary?
-                   g
-                   (link g (cell-at g (:row cell) (rand-nth run)) :north)) []]
-                [(link g cell :east) run])))
-          [grid []]
-          (:cells grid))))
+  (first (reduce (fn [[g r] cell]
+                   (let [run (conj r (:col cell))
+                         eastern-boundary? (not (grid/neighbor? g cell :east))
+                         northern-boundary? (not (grid/neighbor? g cell :north))
+                         end-run? (or eastern-boundary?
+                                      (and (not northern-boundary?)
+                                           (rand-nth [true false])))]
+                     (if end-run?
+                       [(if northern-boundary?
+                          g
+                          (grid/link g
+                                     (grid/cell-at g (:row cell) (rand-nth run))
+                                     :north)) []]
+                       [(grid/link g cell :east) run])))
+                 [grid []]
+                 (:cells grid))))
 
 (defn- render-cell
   [cell]
@@ -131,8 +49,9 @@
 (defn string-render
   [grid]
   (str/join \newline
-            (cons (str "+" (apply str (repeat (cols grid) "---+")))
-                  (mapcat render-row (partition (cols grid) (:cells grid))))))
+            (cons (str "+" (apply str (repeat (grid/cols grid) "---+")))
+                  (mapcat render-row
+                   (partition (grid/cols grid) (:cells grid))))))
 
 (defn- line-low
   [x0 y0 x1 y1]
@@ -192,7 +111,7 @@
   [{:keys [rows cols algorithm]}]
   (let [algo (algorithm-lookup algorithm)]
     (if algo
-      (-> (grid rows cols init-cells)
+      (-> (grid/make-grid rows cols grid/init-cells)
           algo
           string-render)
       (throw (ex-info "[ERROR] Unknown algorithm"
@@ -205,14 +124,15 @@
                   y0 (* cell-size row)
                   x1 (+ x0 cell-size)
                   y1 (+ y0 cell-size)
-                  western-boundary? (not (contains? (neighbors-set grid cell)
-                                                    :west))
-                  northern-boundary? (not (contains? (neighbors-set grid cell)
-                                                     :north))]
+                  western-boundary?
+                  (not (contains? (grid/neighbors-set grid cell) :west))
+
+                  northern-boundary?
+                  (not (contains? (grid/neighbors-set grid cell) :north))]
               (concat (if western-boundary? (line x0 y0 x0 y1) [])
                       (if northern-boundary? (line x0 y0 x1 y0) [])
-                      (if (linked? cell :east) [] (line x1 y0 x1 y1))
-                      (if (linked? cell :south) [] (line x0 y1 x1 y1)))))
+                      (if (grid/linked? cell :east) [] (line x1 y0 x1 y1))
+                      (if (grid/linked? cell :south) [] (line x0 y1 x1 y1)))))
    (:cells grid)))
 
 (defn empty-image
@@ -223,8 +143,8 @@
 
 (defn image-from-grid
   [grid cell-size bg-color wall-color]
-  (let [image (empty-image (inc (* (cols grid) cell-size))
-                           (inc (* (rows grid) cell-size))
+  (let [image (empty-image (inc (* (grid/cols grid) cell-size))
+                           (inc (* (grid/rows grid) cell-size))
                            bg-color)
         maze (maze-pixels grid cell-size)]
     (reduce (fn [img [x y]] (update-image-pixel img x y wall-color))
@@ -244,9 +164,9 @@
    (show-image (image-from-grid grid cell-size bg-color wall-color))))
 
 (comment
-  (-> (grid 20 20 init-cells)
+  (-> (grid/make-grid 20 20 grid/init-cells)
       sidewinder
-      (show 40 col/black col/cyan)))
+      (show 40 col/magenta col/cyan)))
 
 (defn cli-entry [opts] (println (run opts)))
 
