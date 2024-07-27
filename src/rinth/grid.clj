@@ -69,11 +69,7 @@
   (filter (fn [dir] (apply in-bounds? grid (get cell dir)))
           [:north :south :east :west]))
 
-(defn neighbors-set
-  [grid cell]
-  (apply hash-set
-         (filter (fn [dir] (apply in-bounds? grid (get cell dir)))
-                 [:north :south :east :west])))
+(defn neighbors-set [grid cell] (apply hash-set (neighbors grid cell)))
 
 (defn neighbor?
   [grid cell direction]
