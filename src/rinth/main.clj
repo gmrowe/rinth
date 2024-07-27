@@ -1,6 +1,7 @@
 (ns rinth.main
   (:require
    [clojure.string :as str]
+   [mikera.image.core :as img]
    [mikera.image.colours :as col]))
 
 (defn grid
@@ -52,14 +53,16 @@
        (unlink new-grid (apply cell-at new-grid (get cell direction)) (opposite direction) false)
        new-grid))))
 
-(defn linked?
-  [grid cell1 cell2]
-  (some? (some #{cell2} (map #(apply cell-at grid (get cell1 %)) (:links cell1)))))
-
+(defn linked? [cell direction] (some? (get (:links cell) direction)))
 
 (defn neighbors
   [grid cell]
   (filter (fn [dir] (apply in-bounds? grid (get cell dir))) [:north :south :east :west]))
+
+(defn neighbors-set
+  [grid cell]
+  (apply hash-set
+         (filter (fn [dir] (apply in-bounds? grid (get cell dir))) [:north :south :east :west])))
 
 (defn rand-cell [grid] (cell-at grid (rand-int (rows grid)) (rand-int (cols grid))))
 
@@ -107,17 +110,6 @@
             (cons (str "+" (apply str (repeat (cols grid) "---+")))
                   (mapcat render-row (partition (cols grid) (:cells grid))))))
 
-(def algorithm-lookup {:binary-tree binary-tree :sidewinder sidewinder})
-
-(defn run
-  [{:keys [rows cols algorithm]}]
-  (let [algo (algorithm-lookup algorithm)]
-    (if algo
-      (-> (grid rows cols init-cells)
-          algo
-          string-render)
-      (throw (ex-info "[ERROR] Unknown algorithm" {:algorithm (name algorithm)})))))
-
 (defn- line-low
   [x0 y0 x1 y1]
   (let [dx (- x1 x0)
@@ -154,7 +146,9 @@
 
 (defn update-image-pixel
   [image x y color]
-  (assoc-in image [:pixels (+ (* (:width image) y) x)] color))
+  (if (and (< x (:width image)) (< y (/ (count (:pixels image)) (:width image))))
+    (assoc-in image [:pixels (+ (* (:width image) y) x)] color)
+    image))
 
 (defn as-string
   [image]
@@ -165,7 +159,60 @@
          (map str/join)
          (str/join \newline))))
 
+(def algorithm-lookup {:binary-tree binary-tree :sidewinder sidewinder})
 
+(defn run
+  [{:keys [rows cols algorithm]}]
+  (let [algo (algorithm-lookup algorithm)]
+    (if algo
+      (-> (grid rows cols init-cells)
+          algo
+          string-render)
+      (throw (ex-info "[ERROR] Unknown algorithm" {:algorithm (name algorithm)})))))
+
+(defn maze-pixels
+  [grid cell-size]
+  (mapcat (fn [{:keys [row col] :as cell}]
+            (let [x0 (* cell-size col)
+                  y0 (* cell-size row)
+                  x1 (+ x0 cell-size)
+                  y1 (+ y0 cell-size)
+                  western-boundary? (not (contains? (neighbors-set grid cell) :west))
+                  northern-boundary? (not (contains? (neighbors-set grid cell) :north))]
+              (concat (if western-boundary? (line x0 y0 x0 y1) [])
+                      (if northern-boundary? (line x0 y0 x1 y0) [])
+                      (if (linked? cell :east) [] (line x1 y0 x1 y1))
+                      (if (linked? cell :south) [] (line x0 y1 x1 y1)))))
+   (:cells grid)))
+
+(defn empty-image
+  [width height color]
+  {:width width
+   :height height
+   :pixels (vec (repeat (* width height) color))})
+
+(defn image-from-grid
+  [grid cell-size bg-color wall-color]
+  (let [image (empty-image (inc (* (cols grid) cell-size)) (inc (* (rows grid) cell-size)) bg-color)
+        maze (maze-pixels grid cell-size)]
+    (reduce (fn [img [x y]] (update-image-pixel img x y wall-color)) image maze)))
+
+(defn show-image
+  [image]
+  (let [imz (img/new-image (:width image) (:height image))]
+    (img/set-pixels imz (int-array (:pixels image)))
+    (img/show imz)
+    imz))
+
+(defn show
+  ([grid] (show grid 10 col/white col/black))
+  ([grid cell-size bg-color wall-color]
+   (show-image (image-from-grid grid cell-size bg-color wall-color))))
+
+(comment
+  (-> (grid 20 20 init-cells)
+      sidewinder
+      (show 40 col/black col/cyan)))
 
 (defn cli-entry [opts] (println (run opts)))
 
