@@ -3,3 +3,5 @@
 .dir-locals.el
 .nrepl-port
 *.pdf
+*.png
+*.jpg
