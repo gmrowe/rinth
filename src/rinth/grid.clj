@@ -19,9 +19,11 @@
   [rows cols]
   (vec (for [r (range rows) c (range cols)] (cell r c))))
 
+(defn size [grid] (count (:cells grid)))
+
 (defn cols [grid] (:width grid))
 
-(defn rows [grid] (/ (count (:cells grid)) (cols grid)))
+(defn rows [grid] (/ (size grid) (cols grid)))
 
 (defn in-bounds?
   [grid row col]
@@ -35,7 +37,7 @@
     (get-in grid [:cells (raw-index grid row col)])))
 
 (defn reinsert
-  [cell grid]
+  [grid cell]
   (assoc-in grid [:cells (raw-index grid (:row cell) (:col cell))] cell))
 
 (def opposite {:north :south :south :north :west :east :east :west})
@@ -43,7 +45,7 @@
 (defn link
   ([grid cell direction] (link grid cell direction true))
   ([grid cell direction bidirectional?]
-   (let [new-grid (reinsert (update cell :links conj direction) grid)]
+   (let [new-grid (reinsert grid (update cell :links conj direction))]
      (if bidirectional?
        (link new-grid
              (apply cell-at new-grid (get cell direction))
@@ -54,7 +56,7 @@
 (defn unlink
   ([grid cell direction] (unlink grid cell direction true))
   ([grid cell direction bidirectional?]
-   (let [new-grid (reinsert (update cell :links disj direction) grid)]
+   (let [new-grid (reinsert grid (update cell :links disj direction))]
      (if bidirectional?
        (unlink new-grid
                (apply cell-at new-grid (get cell direction))
@@ -79,5 +81,34 @@
   [grid]
   (cell-at grid (rand-int (rows grid)) (rand-int (cols grid))))
 
-(defn size [grid] (count (:cells grid)))
+(defn raw-cell-index [grid cell] (raw-index grid (:row cell) (:col cell)))
 
+
+(defn distances
+  ([grid start]
+   (distances grid
+              [start]
+              []
+              (-> (repeat (size grid) -1)
+                  vec
+                  (update (raw-cell-index grid start) inc))))
+  ([grid frontier new-frontier result]
+   (cond
+     (seq frontier)
+     (let [cell (first frontier)
+           unvisited-links
+           (->> (:links cell)
+                (map (fn [dir] (apply cell-at grid (get cell dir))))
+                (filter (fn [c] (neg? (nth result (raw-cell-index grid c))))))
+
+           curr-dist (nth result (raw-cell-index grid cell))]
+       (recur grid
+              (subvec frontier 1)
+              (apply conj new-frontier unvisited-links)
+              (reduce (fn [res link]
+                        (assoc res (raw-cell-index grid link) (inc curr-dist)))
+                      result
+                      unvisited-links)))
+
+     (seq new-frontier) (recur grid new-frontier [] result)
+     :else result)))
