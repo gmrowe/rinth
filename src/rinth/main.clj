@@ -25,14 +25,14 @@
       [(if northern-boundary?
          g
          (grid/link g (apply grid/cell-at g (rand-nth run)) :north)) []]
-      [(grid/link g cell :east) run])))
+      [(grid/link g (grid/cell-at g (:row cell) (:col cell)) :east) run])))
 
 (defn sidewinder
   [grid]
   (first (reduce sidewinder-step [grid []] (:cells grid))))
 
 
-(def algorithm-lookup {:binary-tree binary-tree :sidewinder sidewinder})
+(def algorithm-lookup {:binary-tree #'binary-tree :sidewinder #'sidewinder})
 
 (defn run
   [{:keys [rows cols algorithm]}]
