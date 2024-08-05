@@ -1,67 +1,67 @@
-#!/usr/bin/env bash
+#! /usr/bin/env bb
 
-usage() {
-    echo "Usage: $0 [-r <integer>] [-c <integer>] <algorithm> "
-    echo
-    echo "   -r <integer> (optional): specify number of rows."
-    echo "                            Default = 4 if not provided"
-    echo "   -c <integer> (optional): specify number of columns."
-    echo "                            Default = 4 if not provided"
-    echo
-    echo "Supported algorithms are:"
-    echo "   binary-tree: a simple binary tree maze generating algorithm."
-    echo "   sidewinder:  a sidewinder maze generating algorithm"
-}
+(require '[clojure.string :as str]
+         '[babashka.cli :as cli]
+         '[babashka.deps :as deps])
 
-# Check for the --help argument
-if [ "$1" == "--help" ]; then
-    usage
-    exit 0
-fi
+(def default-rows 6)
+(def default-cols 6)
 
-cols=4
-rows=4
+(def supported-algorithms
+  [{:name "binary-tree"
+    :description "a simple binary tree maze generating algorithm"}
+   {:name "sidewinder" :description "a sidewinder maze generating algorithm"}])
 
-# Parse command line options
-while getopts ":r:c:h" opt; do
-  case ${opt} in
-    c )
-	cols=$OPTARG
-	;;
-    r )
-	rows=$OPTARG
-	;;
-    h )
-	usage
-	exit 0
-	;;
-    \? )
-	echo "Invalid option: $OPTARG" 1>&2
-	exit 1
-	;;
-    : )
-	echo "Option -$OPTARG requires an argument." 1>&2
-	exit 1
-	;;
-  esac
-done
-shift $((OPTIND -1))
+(def usage
+  (str/join
+   \newline
+   (concat
+    [(format "Usage: %s [-r <integer>] [-c <integer>] <algorithm> " *file*)
+     ""
+     "   -r <integer> (optional): specify number of rows."
+     (format "                            Default = %s if not provided"
+             default-rows)
+     "   -c <integer> (optional): specify number of columns."
+     (format "                            Default = %s if not provided"
+             default-cols)
+     ""
+     "Supported algorithms are:"]
+    (map (fn [{:keys [name description]}] (format "%15s: %s." name description))
+         supported-algorithms))))
 
-# Check if mandatory argument is provided
-if [ -z "$1" ]; then
-    usage
-    exit 1
-fi
 
-algorithm_name=":$1"
+(defn print-usage-and-exit [exit-code] (println usage) (System/exit exit-code))
 
-# Check if cols and rows are integers
-if ! [[ $cols =~ ^[0-9]+$ ]] || ! [[ $rows =~ ^[0-9]+$ ]]; then
-  echo "Cols and rows must be integers."
-  exit 1
-fi
+(defn run
+  [cl-args]
+  (let [{:keys [args opts]} cl-args
+        clojure-args ["-X" "rinth.main/cli-entry" ":rows" (:rows opts) ":cols"
+                      (:cols opts) ":algorithm" (keyword (first args))]]
+    (cond
+      (:help opts) (print-usage-and-exit 0)
+      (seq args) (if-let [proc (deps/clojure clojure-args)]
+                   (-> @proc
+                       :exit
+                       (System/exit))
+                   (System/exit 0))
+      :else (print-usage-and-exit 1))))
 
-opts=":cols $cols :rows $rows :algorithm $algorithm_name"
+(def cli-spec
+  {:rows {:ref "<rows>"
+          :desc "The number of rows in the maze. <rows> must be an int"
+          :default default-rows
+          :default-desc (str default-rows)
+          :coerce :long
+          :alias :r}
+   :cols {:ref "<cols>"
+          :desc "The number of columns in the maze. <cols> must be an int"
+          :default-desc (str default-cols)
+          :default default-cols
+          :coerce :long
+          :alias :c}
+   :help {:desc "Show help message and exit" :coerce :boolean :alias :h}})
 
-clojure -X rinth.main/cli-entry $opts
-
+(when (= *file* (System/getProperty "babashka.file"))
+  (if (seq *command-line-args*)
+    (run (cli/parse-args *command-line-args* {:spec cli-spec}))
+    (print-usage-and-exit 1)))
