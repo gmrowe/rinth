@@ -95,3 +95,23 @@
 
      (seq new-frontier) (recur grid new-frontier [] result)
      :else result)))
+
+(defn shortest-path-search
+  [grid start-row start-col dists path]
+  (if (= (first path) [start-row start-col])
+    path
+    (let [[curr-row curr-col] (first path)
+          curr-cell (cell-at grid curr-row curr-col)
+          min-link (->> (:links curr-cell)
+                        (map (fn [dir] (get curr-cell dir)))
+                        (apply min-key
+                               (fn [[r c]] (nth dists (raw-index grid r c)))))]
+      (recur grid start-row start-col dists (conj path min-link)))))
+
+(defn shortest-path
+  ([grid start-row start-col goal-row goal-col]
+   (shortest-path-search grid
+                         start-row
+                         start-col
+                         (distances grid start-row start-col)
+                         (list [goal-row goal-col]))))
