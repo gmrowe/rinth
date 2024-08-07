@@ -42,13 +42,12 @@
 
 (defn run
   [{:keys [rows cols algorithm]}]
-  (let [algo (algorithm-lookup algorithm)]
-    (if algo
-      (-> (grid/make-grid rows cols grid/init-cells)
-          algo
-          display/show)
-      (throw (ex-info "[ERROR] Unknown algorithm"
-                      {:algorithm (name algorithm)})))))
+  (if-let  [algo (algorithm-lookup algorithm)]
+    (-> (grid/make-grid rows cols grid/init-cells)
+        algo
+        display/show)
+    (throw (ex-info "[ERROR] Unknown algorithm"
+                    {:algorithm (name algorithm)}))))
 
 (comment
   "Save a grid as a png file"
