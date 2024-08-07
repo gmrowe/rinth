@@ -1,6 +1,5 @@
 (ns rinth.main
   (:require
-   [clojure.string :as str]
    [mikera.image.colours :as col]
    [rinth.display :as display]
    [rinth.grid :as grid]))
@@ -30,7 +29,6 @@
 (defn sidewinder
   [grid]
   (first (reduce sidewinder-step [grid []] (:cells grid))))
-
 
 (def algorithm-lookup {:binary-tree #'binary-tree :sidewinder #'sidewinder})
 
