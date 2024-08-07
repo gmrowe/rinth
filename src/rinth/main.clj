@@ -7,28 +7,36 @@
 (defn binary-tree
   [grid]
   (reduce
-   (fn [g cell]
-     (let [path-options (filter #(grid/neighbor? g cell %) [:north :east])]
-       (if (seq path-options) (grid/link g cell (rand-nth path-options)) g)))
+   (fn [g [row col]]
+     (let [path-options (filter #(grid/neighbor? g (grid/cell-at g row col) %)
+                                [:north :east])]
+       (if (seq path-options) (grid/link g row col (rand-nth path-options)) g)))
    grid
-   (:cells grid)))
+   (for [row (range (grid/rows grid)) col (range (grid/cols grid))] [row col])))
 
 (defn- sidewinder-step
-  [[g r] cell]
-  (let [run (conj r [(:row cell) (:col cell)])
-        eastern-boundary? (not (grid/neighbor? g cell :east))
-        northern-boundary? (not (grid/neighbor? g cell :north))
+  [[g curr-run] [row col]]
+  (let [run (conj curr-run [row col])
+        eastern-boundary? (not
+                           (grid/neighbor? g (grid/cell-at g row col) :east))
+        northern-boundary? (not
+                            (grid/neighbor? g (grid/cell-at g row col) :north))
         end-run? (or eastern-boundary?
                      (and (not northern-boundary?) (rand-nth [true false])))]
     (if end-run?
       [(if northern-boundary?
          g
-         (grid/link g (apply grid/cell-at g (rand-nth run)) :north)) []]
-      [(grid/link g (grid/cell-at g (:row cell) (:col cell)) :east) run])))
+         (let [[link-row link-col] (rand-nth run)]
+           (grid/link g link-row link-col :north))) []]
+      [(grid/link g row col :east) run])))
 
 (defn sidewinder
   [grid]
-  (first (reduce sidewinder-step [grid []] (:cells grid))))
+  (first (reduce sidewinder-step
+                 [grid []]
+                 (for [row (range (grid/rows grid))
+                       col (range (grid/cols grid))]
+                   [row col]))))
 
 (def algorithm-lookup {:binary-tree #'binary-tree :sidewinder #'sidewinder})
 
