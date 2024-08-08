@@ -40,12 +40,30 @@
 
 (def algorithm-lookup {:binary-tree #'binary-tree :sidewinder #'sidewinder})
 
+(comment
+  (defn run
+    [{:keys [rows cols algorithm]}]
+    (if-let [algo (algorithm-lookup algorithm)]
+      (-> (grid/make-grid rows cols grid/init-cells)
+          algo
+          display/show)
+      (throw (ex-info "[ERROR] Unknown algorithm"
+                      {:algorithm (name algorithm)})))))
+
+(apply conj [])
+
 (defn run
   [{:keys [rows cols algorithm]}]
-  (if-let  [algo (algorithm-lookup algorithm)]
-    (-> (grid/make-grid rows cols grid/init-cells)
-        algo
-        display/show)
+  (if-let [algo (algorithm-lookup algorithm)]
+    (let [grid (algo (grid/make-grid rows cols grid/init-cells))]
+      (display/show-image
+       (display/image-with-path-from-grid
+        grid
+        (grid/shortest-path grid (dec rows) 0 (dec rows) (dec cols))
+        10
+        col/white
+        col/black
+        col/cyan)))
     (throw (ex-info "[ERROR] Unknown algorithm"
                     {:algorithm (name algorithm)}))))
 
@@ -69,7 +87,9 @@
       sidewinder
       display/show))
 
+(comment
+  (run {:rows 8 :cols 8 :algorithm :sidewinder}))
+
 (defn cli-entry [opts] (println (run opts)))
 
 (defn -main [args] (println (run args)))
-

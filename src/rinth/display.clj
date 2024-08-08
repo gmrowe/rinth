@@ -6,24 +6,46 @@
    [rinth.grid :as grid]))
 
 (defn- string-render-cell
-  [cell]
-  [(str "   " (if (get (:links cell) :east) " " "|"))
+  [cell content-fn]
+  [(str (content-fn cell) (if (get (:links cell) :east) " " "|"))
    (str (if (get (:links cell) :south) "   " "---") "+")])
 
 (defn- string-render-row
-  [row]
+  [row content-fn]
   (reduce (fn [[top bottom] cell]
-            (let [[cell-top cell-bottom] (string-render-cell cell)]
+            (let [[cell-top cell-bottom] (string-render-cell cell content-fn)]
               [(str top cell-top) (str bottom cell-bottom)]))
           ["|" "+"]
           row))
 
-(defn string-render
-  [grid]
+(defn- string-render-grid
+  [grid content-fn]
   (str/join \newline
             (cons (str "+" (apply str (repeat (grid/cols grid) "---+")))
-                  (mapcat string-render-row
-                          (partition (grid/cols grid) (:cells grid))))))
+                  (mapcat #(string-render-row % content-fn)
+                   (partition (grid/cols grid) (:cells grid))))))
+
+(defn string-render [grid] (string-render-grid grid (constantly "   ")))
+
+(defn string-render-with-distance
+  [grid]
+  (let [dists (grid/distances grid 0 0)
+        render-fn (fn [cell]
+                    (let [index (grid/raw-index grid (:row cell) (:col cell))
+                          cell-distance (nth dists index)]
+                      (format " %-2s" cell-distance)))]
+    (string-render-grid grid render-fn)))
+
+(defn string-render-with-path
+  [grid start-row start-col goal-row goal-col]
+  (let [path (grid/shortest-path grid start-row start-col goal-row goal-col)
+        tree (reduce (fn [m [i path]] (assoc-in m path i))
+                     {}
+                     (map-indexed vector path))
+        render-fn (fn [cell]
+                    (let [dist (get-in tree [(:row cell) (:col cell)] "")]
+                      (format " %-2s" dist)))]
+    (string-render-grid grid render-fn)))
 
 (defn line-low
   [x0 y0 x1 y1]
@@ -85,7 +107,7 @@
                (if (grid/neighbor? grid cell :north) [] (line x0 y0 x1 y0))
                (if (grid/linked? cell :east) [] (line x1 y0 x1 y1))
                (if (grid/linked? cell :south) [] (line x0 y1 x1 y1)))))
-          (:cells grid)))
+   (:cells grid)))
 
 (defn cell-pixels
   [cell-size row col]
@@ -93,9 +115,7 @@
         y0 (* cell-size row)
         x1 (+ x0 cell-size)
         y1 (+ y0 cell-size)]
-    (for [y (range y0 y1)
-          x (range x0 x1)]
-      [x y])))
+    (for [y (range y0 y1) x (range x0 x1)] [x y])))
 
 (defn pixel
   [color x y]
@@ -104,23 +124,23 @@
    :y y})
 
 (defn image-from-grid
-    [grid cell-size bg-color wall-color]
-    (let [image (empty-image (inc (* (grid/cols grid) cell-size))
-                             (inc (* (grid/rows grid) cell-size))
-                             bg-color)
-          maze (maze-pixels grid cell-size)]
-      (reduce (fn [img [x y]] (update-image-pixel img x y wall-color))
-              image
-              maze)))
+  [grid cell-size bg-color wall-color]
+  (let [image (empty-image (inc (* (grid/cols grid) cell-size))
+                           (inc (* (grid/rows grid) cell-size))
+                           bg-color)
+        maze (maze-pixels grid cell-size)]
+    (reduce (fn [img [x y]] (update-image-pixel img x y wall-color))
+            image
+            maze)))
 
 (defn image-with-path-from-grid
   [grid path cell-size bg-color wall-color path-color]
   (let [image (empty-image (inc (* (grid/cols grid) cell-size))
                            (inc (* (grid/rows grid) cell-size))
                            bg-color)
-        path-pixels  (->> path
-                          (mapcat #(apply cell-pixels cell-size %))
-                          (map #(apply pixel path-color %)))
+        path-pixels (->> path
+                         (mapcat #(apply cell-pixels cell-size %))
+                         (map #(apply pixel path-color %)))
         wall-pixels (map #(apply pixel wall-color %)
                          (maze-pixels grid cell-size))]
     (reduce (fn [img {:keys [x y color]}] (update-image-pixel img x y color))
