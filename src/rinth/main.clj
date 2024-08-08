@@ -50,20 +50,22 @@
       (throw (ex-info "[ERROR] Unknown algorithm"
                       {:algorithm (name algorithm)})))))
 
-(defn run
-  [{:keys [rows cols algorithm]}]
-  (if-let [algo (algorithm-lookup algorithm)]
-    (let [grid (algo (grid/make-grid rows cols grid/init-cells))]
-      (display/show-image
-       (display/image-with-path-from-grid
-        grid
-        (grid/shortest-path grid (dec rows) 0 (dec rows) (dec cols))
-        10
-        col/white
-        col/black
-        col/cyan)))
-    (throw (ex-info "[ERROR] Unknown algorithm"
-                    {:algorithm (name algorithm)}))))
+(comment
+  (defn run
+    [{:keys [rows cols algorithm]}]
+    (if-let [algo (algorithm-lookup algorithm)]
+      (let [grid (algo (grid/make-grid rows cols grid/init-cells))
+            longest-path (grid/longest-path grid)]
+        (display/show-image
+         (display/image-with-path-from-grid
+          grid
+          longest-path
+          10
+          col/white
+          col/black
+          col/cyan)))
+      (throw (ex-info "[ERROR] Unknown algorithm"
+                      {:algorithm (name algorithm)})))))
 
 (comment
   "Save a grid as a png file"
@@ -72,12 +74,15 @@
       (display/image-from-grid 20 col/magenta col/cyan)
       (display/save-image "my-maze.png")))
 
-(comment
+(defn run
   "Show a grid on-screen as a Jframe"
-  (-> (grid/make-grid 20 20 grid/init-cells)
-      sidewinder
-      (display/image-from-grid 20 col/black col/cyan)
-      display/show-image))
+  [{:keys [rows cols algorithm]}]
+  (let [transform (algorithm-lookup algorithm)
+        grid (transform (grid/make-grid rows cols grid/init-cells))
+        longest-path (grid/longest-path grid)]
+    (-> grid
+        (display/image-with-path-from-grid longest-path 20 col/orange col/green col/magenta)
+        display/show-image)))
 
 (comment
   "Show a grid on-screen as a Jframe, convienence method with `sensible defaults`"
