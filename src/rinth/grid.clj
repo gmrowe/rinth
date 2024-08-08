@@ -29,7 +29,7 @@
   [grid row col]
   (and (<= 0 row) (< row (rows grid)) (<= 0 col) (< col (cols grid))))
 
-(defn- raw-index [grid row col] (+ (* row (cols grid)) col))
+(defn raw-index [grid row col] (+ (* row (cols grid)) col))
 
 (defn cell-at
   [grid row col]
