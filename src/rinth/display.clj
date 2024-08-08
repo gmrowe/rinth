@@ -36,6 +36,8 @@
                       (format " %-2s" cell-distance)))]
     (string-render-grid grid render-fn)))
 
+(Integer/toString 22 36)
+
 (defn string-render-with-path
   [grid start-row start-col goal-row goal-col]
   (let [path (grid/shortest-path grid start-row start-col goal-row goal-col)
@@ -43,8 +45,9 @@
                      {}
                      (map-indexed vector path))
         render-fn (fn [cell]
-                    (let [dist (get-in tree [(:row cell) (:col cell)] "")]
-                      (format " %-2s" dist)))]
+                    (if-let [dist (get-in tree [(:row cell) (:col cell)])]
+                      (format " %-2s" (Integer/toString dist 36))
+                      "   "))]
     (string-render-grid grid render-fn)))
 
 (defn line-low
