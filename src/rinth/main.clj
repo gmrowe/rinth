@@ -50,8 +50,6 @@
       (throw (ex-info "[ERROR] Unknown algorithm"
                       {:algorithm (name algorithm)})))))
 
-(apply conj [])
-
 (defn run
   [{:keys [rows cols algorithm]}]
   (if-let [algo (algorithm-lookup algorithm)]
