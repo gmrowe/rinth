@@ -120,12 +120,10 @@
   [grid row col]
   (let [dists (distances grid row col)
         [cell distance] (apply max-key second (map vector (:cells grid) dists))]
-    [[(:row cell) (:col cell)] distance]))
+    (merge (select-keys cell [:row :col]) {:distance distance})))
 
 (defn longest-path
   [grid]
-  (let [start-row 0
-        start-col 0
-        [[row col] _] (max-distance-from grid start-row start-col)
-        [[goal-row goal-col] _] (max-distance-from grid row col)]
+  (let [{:keys [row col]} (max-distance-from grid 0 0)
+        {goal-row :row goal-col :col} (max-distance-from grid row col)]
     (shortest-path grid row col goal-row goal-col)))
