@@ -5,7 +5,7 @@ A clojure maze generation project based on [Mazes for Programmers](https://pragp
 ## Requirements
 
 - [Java runtime](https://openjdk.org/)
-- [Clojure]()
+- [Clojure](https://clojure.org/releases/downloads)
 
 ## Usage
 
