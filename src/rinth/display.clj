@@ -23,7 +23,7 @@
   (str/join \newline
             (cons (str "+" (apply str (repeat (grid/cols grid) "---+")))
                   (mapcat #(string-render-row % content-fn)
-                          (partition (grid/cols grid) (:cells grid))))))
+                   (partition (grid/cols grid) (:cells grid))))))
 
 (defn string-render [grid] (string-render-grid grid (constantly "   ")))
 
@@ -35,8 +35,6 @@
                           cell-distance (nth dists index)]
                       (format " %-2s" cell-distance)))]
     (string-render-grid grid render-fn)))
-
-(Integer/toString 22 36)
 
 (defn string-render-with-path
   [grid start-row start-col goal-row goal-col]
@@ -104,34 +102,18 @@
    :x x
    :y y})
 
-(defn maze-pixels
-  [grid cell-size]
-  (mapcat (fn [{:keys [row col] :as cell}]
-            (let [x0 (* cell-size col)
-                  y0 (* cell-size row)
-                  x1 (+ x0 cell-size)
-                  y1 (+ y0 cell-size)]
-              (concat
-               (if (grid/neighbor? grid cell :west) [] (line x0 y0 x0 y1))
-               (if (grid/neighbor? grid cell :north) [] (line x0 y0 x1 y0))
-               (if (grid/linked? cell :east) [] (line x1 y0 x1 y1))
-               (if (grid/linked? cell :south) [] (line x0 y1 x1 y1)))))
-          (:cells grid)))
-
 (defn cell-wall-pixels
   [grid cell-size color row col]
   (let [cell (grid/cell-at grid row col)
         x0 (* cell-size col)
         y0 (* cell-size row)
-        x1 (+ x0 cell-size)
-        y1 (+ y0 cell-size)]
-    (map
-     (fn [[x y]] (pixel color x y))
-     (concat
-      (if (grid/neighbor? grid cell :west) [] (line x0 y0 x0 y1))
-      (if (grid/neighbor? grid cell :north) [] (line x0 y0 x1 y0))
-      (if (grid/linked? cell :east) [] (line x1 y0 x1 y1))
-      (if (grid/linked? cell :south) [] (line x0 y1 x1 y1))))))
+        x1 (+ cell-size x0)
+        y1 (+ cell-size y0)]
+    (map (fn [[x y]] (pixel color x y))
+         (concat (if (grid/neighbor? grid cell :west) [] (line x0 y0 x0 y1))
+                 (if (grid/neighbor? grid cell :north) [] (line x0 y0 x1 y0))
+                 (if (grid/linked? cell :east) [] (line x1 y0 x1 y1))
+                 (if (grid/linked? cell :south) [] (line x0 y1 x1 y1))))))
 
 (defn cell-bg-pixels
   [cell-size color row col]
@@ -139,43 +121,53 @@
         y0 (* cell-size row)
         x1 (+ x0 cell-size)
         y1 (+ y0 cell-size)]
-    (for [y (range y0 y1)
-          x (range x0 x1)]
-      (pixel color x y))))
+    (for [y (range y0 y1) x (range x0 x1)] (pixel color x y))))
 
-(defn cell->pixels
+(defn cell-pixels
   [grid cell-size bg-color wall-color row col]
   {:bg (cell-bg-pixels cell-size bg-color row col)
    :walls (cell-wall-pixels grid cell-size wall-color row col)})
 
-(defn _image-from-grid
+(defn grid-pixels
   [grid cell-size bg-color-fn wall-color-fn]
-  (let [image (empty-image (-> cell-size (* (grid/cols grid)) inc)
-                           (inc (* (grid/rows grid) cell-size))
-                           0)
-        grid-pixels (for [col (range (grid/cols grid)) 
-                          row (range (grid/rows grid))]
-                      (cell->pixels grid 
-                                    cell-size
-                                    (bg-color-fn row col) 
-                                    (wall-color-fn row col) 
-                                    row 
-                                    col))
-        {:keys [bg walls]} (apply merge-with concat grid-pixels)]
+  (apply merge-with
+         concat
+         (for [col (range (grid/cols grid))
+               row (range (grid/rows grid))]
+           (cell-pixels grid
+                        cell-size
+                        (bg-color-fn row col)
+                        (wall-color-fn row col)
+                        row
+                        col))))
+
+(defn init-image
+  [grid cell-size]
+  (let [width (inc (* (grid/cols grid) cell-size))
+        height (inc (* (grid/rows grid) cell-size))]
+    {:width width :height height :pixels (vec (repeat (* width height) 0))}))
+
+(defn image-from-grid*
+  [grid cell-size bg-color-fn wall-color-fn]
+  (let [{:keys [bg walls]}
+        (grid-pixels grid cell-size bg-color-fn wall-color-fn)]
     (reduce (fn [img {:keys [x y color]}] (update-image-pixel img x y color))
-            image
+            (init-image grid cell-size)
             (concat bg walls))))
 
 (defn image-from-grid
   [grid cell-size bg-color wall-color]
-  (_image-from-grid grid cell-size (constantly bg-color) (constantly wall-color)))
+  (image-from-grid* grid
+                    cell-size
+                    (constantly bg-color)
+                    (constantly wall-color)))
 
 (defn image-with-path-from-grid
   [grid path cell-size bg-color wall-color path-color]
   (let [path-set (apply hash-set path)
-        bg-color-fn (fn [row col] 
+        bg-color-fn (fn [row col]
                       (if (path-set [row col]) path-color bg-color))]
-    (_image-from-grid grid cell-size bg-color-fn (constantly wall-color))))
+    (image-from-grid* grid cell-size bg-color-fn (constantly wall-color))))
 
 (defn show-image
   [image]
