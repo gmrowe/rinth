@@ -1,5 +1,6 @@
 (ns rinth.display
   (:require
+   [clojure.math :as math]
    [clojure.string :as str]
    [mikera.image.core :as img]
    [mikera.image.colours :as col]
@@ -168,6 +169,19 @@
         bg-color-fn (fn [row col]
                       (if (path-set [row col]) path-color bg-color))]
     (image-from-grid* grid cell-size bg-color-fn (constantly wall-color))))
+
+(defn image-colored-by-distance
+  [grid cell-size start-row start-col]
+  (let [dists (grid/distances grid start-row start-col)
+        max-dist (apply max dists)
+        bg-color-fn (fn [row col]
+                      (let [distance (nth dists (grid/raw-index row col))
+                            intensity (/ (double (- max-dist distance))
+                                         max-dist)
+                            dark (math/round (* 255.0 intensity))
+                            bright (math/round (+ 128.0 (* 127.0 intensity)))]
+                        (col/rgb dark bright dark)))]
+    (image-from-grid* grid cell-size bg-color-fn (constantly col/white))))
 
 (defn show-image
   [image]
