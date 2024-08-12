@@ -56,7 +56,10 @@
                (if visited? visited-count (inc visited-count))))
       g)))
 
-(def algorithm-lookup {:binary-tree #'binary-tree :sidewinder #'sidewinder})
+(def algorithm-lookup
+  {:binary-tree #'binary-tree
+   :sidewinder #'sidewinder
+   :aldous-broder #'aldous-broder})
 
 (comment
   (defn run

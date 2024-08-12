@@ -10,7 +10,8 @@
 (def supported-algorithms
   [{:name "binary-tree"
     :description "a simple binary tree maze generating algorithm"}
-   {:name "sidewinder" :description "a sidewinder maze generating algorithm"}])
+   {:name "sidewinder" :description "a sidewinder maze generating algorithm"}
+   {:name "aldous-broder" :description "Aldous-Broder random walk algorithm"}])
 
 (def usage
   (str/join
