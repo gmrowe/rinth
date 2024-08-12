@@ -38,6 +38,24 @@
                        col (range (grid/cols grid))]
                    [row col]))))
 
+(defn aldous-broder
+  [grid]
+  (loop [g grid
+         [row col] [(rand-int (grid/rows grid)) (rand-int (grid/cols grid))]
+         visited-count 1]
+    (if (< visited-count (grid/size g))
+      (let [next-dir (->> (grid/cell-at g row col)
+                          (grid/neighbors g)
+                          rand-nth)
+            [next-row next-col] (get (grid/cell-at g row col) next-dir)
+            visited? (-> (grid/cell-at g next-row next-col)
+                         :links
+                         seq)]
+        (recur (if visited? g (grid/link g row col next-dir))
+               [next-row next-col]
+               (if visited? visited-count (inc visited-count))))
+      g)))
+
 (def algorithm-lookup {:binary-tree #'binary-tree :sidewinder #'sidewinder})
 
 (comment
@@ -81,7 +99,11 @@
         grid (transform (grid/make-grid rows cols grid/init-cells))
         longest-path (grid/longest-path grid)]
     (-> grid
-        (display/image-with-path-from-grid longest-path 20 col/orange col/green col/magenta)
+        (display/image-with-path-from-grid longest-path
+                                           20
+                                           col/orange
+                                           col/green
+                                           col/magenta)
         display/show-image)))
 
 (comment
@@ -91,7 +113,8 @@
       display/show))
 
 (comment
-  (run {:rows 8 :cols 8 :algorithm :sidewinder}))
+  (run {:rows 8 :cols 8 :algorithm :sidewinder})
+)
 
 (defn cli-entry [opts] (println (run opts)))
 
