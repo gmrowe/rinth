@@ -6,6 +6,7 @@
 
 (def default-rows 6)
 (def default-cols 6)
+(def default-show-path false)
 
 (def supported-algorithms
   [{:name "binary-tree"
@@ -17,7 +18,9 @@
   (str/join
    \newline
    (concat
-    [(format "Usage: %s [-r <integer>] [-c <integer>] <algorithm> " *file*)
+    [(format
+      "Usage: %s [-r <integer>] [-c <integer>] [--show-paths] <algorithm> "
+      *file*)
      ""
      "   -r <integer> (optional): specify number of rows."
      (format "                            Default = %s if not provided"
@@ -36,8 +39,11 @@
 (defn run
   [cl-args]
   (let [{:keys [args opts]} cl-args
-        clojure-args ["-X" "rinth.main/cli-entry" ":rows" (:rows opts) ":cols"
-                      (:cols opts) ":algorithm" (keyword (first args))]]
+        clojure-args ["-X" "rinth.main/cli-entry"
+                      ":rows" (:rows opts)
+                      ":cols" (:cols opts)
+                      ":show-path" (:show-path opts)
+                      ":algorithm" (keyword (first args))]]
     (cond
       (:help opts) (print-usage-and-exit 0)
       (seq args) (if-let [proc (deps/clojure clojure-args)]
@@ -60,9 +66,19 @@
           :default default-cols
           :coerce :long
           :alias :c}
+   :show-path {:ref "<show-path>"
+               :desc "If enabled, show the longest path in the grid"
+               :default-desc (str default-show-path)
+               :default default-show-path
+               :coerce :boolean
+               :alias :p}
    :help {:desc "Show help message and exit" :coerce :boolean :alias :h}})
 
 (when (= *file* (System/getProperty "babashka.file"))
   (if (seq *command-line-args*)
-    (run (cli/parse-args *command-line-args* {:spec cli-spec}))
+    (let [args (cli/parse-args *command-line-args* {:spec cli-spec})]
+      (prn args)
+      (run args))
     (print-usage-and-exit 1)))
+
+
