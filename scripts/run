@@ -4,10 +4,6 @@
          '[babashka.cli :as cli]
          '[babashka.deps :as deps])
 
-(def default-rows 6)
-(def default-cols 6)
-(def default-show-path false)
-
 (def supported-algorithms
   [{:name "binary-tree"
     :description "a simple binary tree maze generating algorithm"}
@@ -23,11 +19,7 @@
       *file*)
      ""
      "   -r <integer> (optional): specify number of rows."
-     (format "                            Default = %s if not provided"
-             default-rows)
      "   -c <integer> (optional): specify number of columns."
-     (format "                            Default = %s if not provided"
-             default-cols)
      ""
      "Supported algorithms are:"]
     (map (fn [{:keys [name description]}] (format "%15s: %s." name description))
@@ -39,46 +31,30 @@
 (defn run
   [cl-args]
   (let [{:keys [args opts]} cl-args
-        clojure-args ["-X" "rinth.main/cli-entry"
-                      ":rows" (:rows opts)
-                      ":cols" (:cols opts)
-                      ":show-path" (:show-path opts)
-                      ":algorithm" (keyword (first args))]]
-    (cond
-      (:help opts) (print-usage-and-exit 0)
-      (seq args) (if-let [proc (deps/clojure clojure-args)]
-                   (-> @proc
-                       :exit
-                       (System/exit))
-                   (System/exit 0))
-      :else (print-usage-and-exit 1))))
+        clojure-args (concat ["-X" "rinth.main/cli-entry"]
+                             (when-let [rows (:rows opts)] [":rows" rows])
+                             (when-let [cols (:cols opts)] [":cols" cols])
+                             (when-let [show-path (:show-path opts)]
+                               [":show-path" show-path])
+                             (when-let [algorithm (:algorithm opts)]
+                               [":algorithm" algorithm]))]
+    (if (:help opts)
+      (print-usage-and-exit 0)
+      (if-let [proc (deps/clojure clojure-args)]
+        (-> @proc
+            :exit
+            (System/exit))
+        (System/exit 0)))))
 
 (def cli-spec
-  {:rows {:ref "<rows>"
-          :desc "The number of rows in the maze. <rows> must be an int"
-          :default default-rows
-          :default-desc (str default-rows)
-          :coerce :long
-          :alias :r}
-   :cols {:ref "<cols>"
-          :desc "The number of columns in the maze. <cols> must be an int"
-          :default-desc (str default-cols)
-          :default default-cols
-          :coerce :long
-          :alias :c}
-   :show-path {:ref "<show-path>"
-               :desc "If enabled, show the longest path in the grid"
-               :default-desc (str default-show-path)
-               :default default-show-path
-               :coerce :boolean
-               :alias :p}
-   :help {:desc "Show help message and exit" :coerce :boolean :alias :h}})
+  {:rows {:coerce :long :alias :r}
+   :cols {:coerce :long :alias :c}
+   :show-path {:coerce :boolean :alias :p}
+   :help {:coerce :boolean :alias :h}})
 
 (when (= *file* (System/getProperty "babashka.file"))
-  (if (seq *command-line-args*)
-    (let [args (cli/parse-args *command-line-args* {:spec cli-spec})]
-      (prn args)
-      (run args))
-    (print-usage-and-exit 1)))
+  (let [args (cli/parse-args *command-line-args* {:spec cli-spec})]
+    (prn args)
+    (run args)))
 
 
