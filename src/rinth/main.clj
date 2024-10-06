@@ -63,26 +63,18 @@
 
 (defn run
   "Show a grid on-screen as a Jframe"
-  [opts]
-  (let [{:keys [algorithm
-                bg-color
-                wall-color
-                path-color
-                cell-size
-                rows cols
-                show-path]}
-        opts
-
-        transform (algorithm-lookup algorithm)
+  [{:keys [algorithm bg-color wall-color path-color cell-size rows cols
+           show-path]}]
+  (let [transform (algorithm-lookup algorithm)
         grid (transform (grid/make-grid rows cols grid/init-cells))
         image (if show-path
-                (display/image-with-path-from-grid grid
-                                                   (grid/longest-path grid)
-                                                   cell-size
-                                                   bg-color
-                                                   wall-color
-                                                   path-color)
-                (display/image-from-grid grid cell-size bg-color wall-color))]
+                (display/image-with-path grid
+                                         (grid/longest-path grid)
+                                         cell-size
+                                         bg-color
+                                         wall-color
+                                         path-color)
+                (display/image grid cell-size bg-color wall-color))]
     (display/show-image image)))
 
 (comment
@@ -92,15 +84,6 @@
       (display/image-from-grid 20 col/magenta col/cyan)
       (display/save-image "my-maze.png")))
 
-(comment
-  "Show a grid on-screen as a Jframe, convienence method with `sensible defaults`"
-  (-> (grid/make-grid 20 20 grid/init-cells)
-      sidewinder
-      display/show))
-
-(comment
-  (run {:rows 8 :cols 8 :algorithm :sidewinder})
-)
 
 (def default-opts
   {:bg-color col/white
@@ -110,6 +93,7 @@
    :rows 10
    :cols 10
    :algorithm :sidewinder})
+
 
 (defn cli-entry [opts] (run (merge default-opts opts)))
 
